@@ -9,17 +9,23 @@ exports.handler = (event, context, callback) => {
 
         if (record.eventName == 'INSERT') {
             var temp = JSON.stringify(record.dynamodb.NewImage.Temperature);
-            if (temp == null)
+            var humidity = JSON.stringify(record.dynamodb.NewImage.Humidity);            
+            const myObj = JSON.parse(temp);
+            var x = myObj.S;
+            const myObj2 = JSON.parse(humidity);
+            var y = myObj2.S;
+            if (temp == undefined)
                 {
                     temp = {"S":"79"};
                 }
-            var temp2 = parseInt(temp.S); 
+            var temp2 = parseInt(x);
+            var humidity2 = parseInt(y);
             var params = {
-                Subject: 'A new dht temp: ' + temp2,
-                Message: 'A new dht temp: ' + temp2,
+                Subject: 'An extreme dht reading - temp: ' + temp2 + ' humidity: ' + humidity2,
+                Message: 'An extreme dht reading - temp: ' + x +  ' humidity: ' + y,
                 TopicArn: 'arn:aws:sns:us-east-1:116401681764:dht'
             };
-            if (temp2 <= 80)
+            if (temp2 <= 67 || humidity2 <= 10)
             {
                 sns.publish(params, function(err, data) {
                     if (err) {
