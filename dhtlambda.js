@@ -1,6 +1,7 @@
 'use strict';
 var AWS = require("aws-sdk");
 var sns = new AWS.SNS();
+var s3 = new AWS.S3();
 
 exports.handler = (event, context, callback) => {
 
@@ -9,15 +10,19 @@ exports.handler = (event, context, callback) => {
 
         if (record.eventName == 'INSERT') {
             var temp = JSON.stringify(record.dynamodb.NewImage.Temperature);
-            var humidity = JSON.stringify(record.dynamodb.NewImage.Humidity);            
+            if (temp == undefined)
+                {
+                  var temp = '{"S":"79"}';
+                }
+            var humidity = JSON.stringify(record.dynamodb.NewImage.Humidity);
+            if (humidity == undefined)
+                {
+                  var humidity = '{"S":"79"}';
+                }            
             const myObj = JSON.parse(temp);
             var x = myObj.S;
             const myObj2 = JSON.parse(humidity);
             var y = myObj2.S;
-            if (temp == undefined)
-                {
-                    temp = {"S":"79"};
-                }
             var temp2 = parseInt(x);
             var humidity2 = parseInt(y);
             var params = {
@@ -25,6 +30,7 @@ exports.handler = (event, context, callback) => {
                 Message: 'An extreme dht reading - temp: ' + x +  ' humidity: ' + y,
                 TopicArn: 'arn:aws:sns:us-east-1:116401681764:dht'
             };
+            const d = new Date(Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));;
             if (temp2 <= 67 || humidity2 <= 10)
             {
                 sns.publish(params, function(err, data) {
@@ -35,6 +41,16 @@ exports.handler = (event, context, callback) => {
                     }
                 });
             }
+            var s3params = {
+            Bucket : 'zzz',
+            Key: 'dht/' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getTime(),            
+            Body: JSON.stringify(record.dynamodb.NewImage),
+            ContentType: 'application/json; charset=utf-8'
+            }
+            s3.putObject(s3params, function(err, data) {
+              if (err) console.log(err, err.stack); // an error occurred
+              else     console.log(data);           // successful response
+            });
         }
     });
     callback(null, `Successfully processed ${event.Records.length} records.`);
